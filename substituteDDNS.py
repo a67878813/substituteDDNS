@@ -13,14 +13,15 @@ else:
 
 LOG = True
 log_file = r"uploaded.log"
-# default config_data ,enable when config.json isn't exist.
+# default config_data ,enable when config.json dosn't exist.
+list_test = ['lib.com', 'lib2.com']
 config_data = {
     'behavior': 'Behavior.SERVER',
     'ServerIp': "192.168.88.230", 'ServerPort': '8888',
     'current_ip': '222.222.222.222', 'ip_-1': '222.222.111.111',
-    'change_domain_name': 'lib.com',
+    'local_ip_to_server_domain': 'lib.com',
     'lib.com': "222.222.222.222",
-    'readed_domain': "['lib.com',]"
+    'readed_domain': list_test,
 }
 
 
@@ -190,16 +191,19 @@ def write_json(j_dic):
 
 def get_requrl():
     requrl = "http://" + config_data['ServerIp'] + ":" + config_data['ServerPort'] + "/"  \
-        + config_data['change_domain_name']
+        + config_data['local_ip_to_server_domain']
     return requrl
 
 
-def get_server_innerIP(_domain_name='lib.com'):
+def get_server_innerIPs(_domain_name_list=['lib.com',]):
     #curr_ip = my_getIP()
-    requrl = "http://" + config_data['ServerIp'] + ":" + config_data['ServerPort'] + "/"  \
-        + _domain_name
-    response = requests.get(requrl)
-    print(response.json())
+    return_dict = {}
+    for _domain_name in _domain_name_list:
+        requrl = "http://" + config_data['ServerIp'] + ":" + config_data['ServerPort'] + "/"  \
+            + _domain_name
+        response = requests.get(requrl)
+        return_dict.update(response.json())
+    return return_dict
 
 
 def get_server_innerIP(_domain_name='lib.com'):
@@ -209,28 +213,12 @@ def get_server_innerIP(_domain_name='lib.com'):
     r_data = json.loads(response.content.decode('UTF-8'))
     return r_data
 
-    if(config_data['current_ip'] != curr_ip):
-        domain_name = config_data['change_domain_name']  # update local
-
-        # update server
-        response = requests.post(get_requrl(), json=json.dumps(
-            {domain_name: curr_ip}
-        ))
-        print(nowtimestr(), " updated IP:", curr_ip, " ", )
-        temp_value = config_data['current_ip']
-        config_data['ip_-1'] = temp_value
-        config_data['current_ip'] = curr_ip
-        write_json(config_data)
-        if LOG == True:
-            with open(log_file, 'a+') as f:
-                f.write(nowtimestr() + " updated IP:" + curr_ip + "\n")
-
 
 def post_server_innerIP():
     pass
     curr_ip = my_getIP()
     if(config_data['current_ip'] != curr_ip):
-        domain_name = config_data['change_domain_name']  # update local
+        domain_name = config_data['local_ip_to_server_domain']  # update local
 
         # update server
         # server
@@ -281,7 +269,8 @@ if __name__ == "__main__":
     if my_behavior == Behavior.CLIENT_GET:
         # get ip
         while(1):
-            _tempdict = get_server_innerIP(config_data['change_domain_name'])
+            _tempdict = get_server_innerIPs(config_data['readed_domain'])
+            print(_tempdict)
             C_FLAG = False
 
             # update config fire
