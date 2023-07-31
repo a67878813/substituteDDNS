@@ -14,7 +14,7 @@ else:
 LOG = True
 log_file = r"uploaded.log"
 # default config_data ,enable when config.json dosn't exist.
-list_test = ['lib.com', 'lib2.com']
+list_test = ['lib.com']
 config_data = {
     'behavior': 'Behavior.SERVER',
     'ServerIp': "192.168.88.230", 'ServerPort': '8888',
@@ -26,8 +26,8 @@ config_data = {
 
 
 def hello_message():
-    mes = r"\nsubstituteDDNS 0.1 written by Esir at 2023.07 \n ALL COPYRITES RESERVED"
-
+    mes = "\n substituteDDNS 0.1 written by Esir at 2023.07 \n ALL COPYRIGHTES RESERVED\n"
+    return mes
 
 class Behavior(Enum):
     SERVER = 1
@@ -58,7 +58,7 @@ data_respond_PSOT = {
     'timestamp': '',
     'data': ''  # {'message_id': '25d55ad283aa400af464c76d713c07ad'}
 }
-return_false_data = {'error': 'has_error', }
+return_false_data = {'error': 'default error msg', }
 
 
 def nowtimestr():
@@ -82,14 +82,18 @@ if my_behavior == Behavior.SERVER:
             self.end_headers()
             if len(path) > 1:  # path == "/accc":
                 _path = path[1:]
-                # print(_path)
+                #print(_path)
                 if (len(_path) > 1) & (_path in config_data.keys()):
                     # send {domain: ip}
                     self.wfile.write(json.dumps(
-                        {_path: config_data[_path]}).encode())
+                        {_path: config_data[_path]}).encode("utf-8"))
+                else:
+                    err_data = return_false_data
+                    err_data['error'] = "can not find domain"
+                    self.wfile.write(json.dumps(err_data).encode("utf-8"))
             else:
                 # send {error}
-                self.wfile.write(json.dumps(return_false_data).encode())
+                self.wfile.write(json.dumps(return_false_data).encode("utf-8"))
 
         def do_POST(self):
             # print("get POST")
@@ -195,14 +199,21 @@ def get_requrl():
     return requrl
 
 
-def get_server_innerIPs(_domain_name_list=['lib.com',]):
+def get_server_innerIPs(_domain_name_list=['lib.com']):
     #curr_ip = my_getIP()
     return_dict = {}
     for _domain_name in _domain_name_list:
-        requrl = "http://" + config_data['ServerIp'] + ":" + config_data['ServerPort'] + "/"  \
-            + _domain_name
-        response = requests.get(requrl)
-        return_dict.update(response.json())
+        if _domain_name != "":
+            requrl = "http://" + config_data['ServerIp'] + ":" + config_data['ServerPort'] + "/"  \
+                + _domain_name
+            #print(requrl)
+            response = requests.get(requrl)
+            if "error" not in response.json().keys():
+                return_dict.update(response.json())
+            else:
+                print("ERROR: at get_server_innerIPs")
+                print("\t","requrl: ",requrl)
+                print("\terror msg : ", response.json()['error'])
     return return_dict
 
 
@@ -238,6 +249,8 @@ def post_server_innerIP():
 if __name__ == "__main__":
     # check config.json, create new if not exist.
     print(hello_message())
+    print("============================")
+    print("============================")
     if (not os.path.exists("config.json")):
         # print('here')
         if my_behavior == Behavior.SERVER:
@@ -261,7 +274,6 @@ if __name__ == "__main__":
     if my_behavior == Behavior.CLIENT_UP:
         # upload ip
         print("Starting client ip, to host %s" % config_data['ServerIp'])
-        pass
         while(1):
             post_server_innerIP()
             time.sleep(60)
@@ -270,25 +282,26 @@ if __name__ == "__main__":
         # get ip
         while(1):
             _tempdict = get_server_innerIPs(config_data['readed_domain'])
-            print(_tempdict)
-            C_FLAG = False
+            if _tempdict != {}:
+                #print(_tempdict)
+                C_FLAG = False
 
-            # update config fire
-            for _domain in _tempdict.keys():
-                if _domain in config_data.keys():
-                    # check domin: ip changes
-                    if _tempdict[_domain] != config_data[_domain]:
-                        C_FLAG = True
-                        # update value
-                        config_data[_domain] = _tempdict[_domain]
-                        # print("update value at ", _domain,
-                        #         " : ", config_data[_domain])
+                # update config fire
+                for _domain in _tempdict.keys():
+                    if _domain in config_data.keys():
+                        # check domin: ip changes
+                        if _tempdict[_domain] != config_data[_domain]:
+                            C_FLAG = True
+                            # update value
+                            config_data[_domain] = _tempdict[_domain]
+                            # print("update value at ", _domain,
+                            #         " : ", config_data[_domain])
 
-            if C_FLAG == True:
-                # write to disk
-                write_json(config_data)
+                if C_FLAG == True:
+                    # write to disk
+                    write_json(config_data)
 
-                # update HOST file
-                update_hosts(_tempdict)
+                    # update HOST file
+                    update_hosts(_tempdict)
 
             time.sleep(60)
